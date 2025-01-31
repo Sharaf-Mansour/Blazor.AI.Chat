@@ -1,0 +1,90 @@
+﻿@page "/"
+@using System.Text.RegularExpressions
+@using Toolbelt.Blazor.SpeechSynthesis
+@inject SpeechSynthesis SpeechSynthesis
+
+<h3 class="text-center mt-3">Blazor Chat App</h3>
+
+<div class="container p-3">
+    <div class="card shadow-lg">
+        <div class="card-body chat-box" style="height: 400px; overflow-y: auto;">
+            @foreach (var message in Messages)
+            {
+                <div class="mb-2 d-flex @(message.User is User.You ? "justify-content-start" : "justify-content-end")">
+                    <div class="p-2 border rounded @(message.User is User.You ? "bg-light" : "bg-dark text-white")" style="max-width: 70%;">
+                        <strong>@message.User:</strong>
+                        @if (NewMessage is "" && IsAiThinking){
+                            <span>Thinking...</span>
+                        }
+                        <span>@message.Text</span>
+                        <div class="  @(message.User is User.You ? "text-muted" : "text-light")"   style="font-size: 0.8rem;">@message.Timestamp.ToString("HH:mm")</div>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="card-footer p-2">
+            <EditForm Model="this" Enhance class="input-group">
+                <input type="text" class="form-control" placeholder="Type a message..." @bind="NewMessage"  />
+                <button type="submit" class="btn btn-primary" @onclick="SendMessage">Send</button>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string NewMessage { get; set; } = "";
+    private List<Message> Messages { get; set; } = new();
+    private bool IsAiThinking { get; set; } = false;
+    IEnumerable<SpeechSynthesisVoice> Voices;
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) this.Voices = await this.SpeechSynthesis.GetVoicesAsync();
+
+    }
+    private async void SendMessage()
+    {
+        if (!string.IsNullOrWhiteSpace(NewMessage))
+        {
+            Messages.Add(new Message { User = User.You, Text = NewMessage, Timestamp = DateTime.Now });
+            IsAiThinking = true;
+            var item = new Message { User = User.Bot, Text = "Thinking...", Timestamp = DateTime.Now };
+            Messages.Add(item);
+            var response = await AiEngine.GetResponseAsync(NewMessage);
+            //remove all text between <think> and </think>
+            var pattern = @"<think>(.*?)\n(.*?)</think>";
+            var regex = new Regex(pattern, RegexOptions.Singleline);
+            var result = regex.Replace(response, match =>
+            {
+                var answer = match.Groups[1].Value.Trim();
+                var result  = match.Groups[2].Value.Trim();
+                return answer;
+            });
+            var finalUtterance = new SpeechSynthesisUtterance
+                {
+                    Text = result,
+                    Voice = this.Voices.FirstOrDefault(v => v.Name.Contains("Aria")),
+                    Volume = 1,
+                    Rate = 1.2,
+                };
+
+            await this.SpeechSynthesis.SpeakAsync(finalUtterance);
+            item = new Message { User = User.Bot, Text = result, Timestamp = DateTime.Now };
+             NewMessage = "";
+            IsAiThinking = false;
+            this.StateHasChanged();
+        }
+    }
+ 
+
+    private class Message
+    {
+        public User User { get; set; } = User.You;
+        public string? Text { get; set; } = "";
+        public DateTime Timestamp { get; set; }
+    }
+    enum User
+    {
+        You,
+        Bot
+    }
+}
