@@ -2,7 +2,7 @@
 namespace Blazor.AI.Chat.Brokers;
 public class AiEngine(IChatClient ChatClient)
 {
-    static List<ChatMessage> Conversation => [new(ChatRole.System, "You are a helpful AI assistant, Do not talk a lot, keep it short and simple")];
+    public List<ChatMessage> Conversation { get; private set; } = [new(ChatRole.System, "You are a helpful AI assistant, Do not talk a lot, keep it short and simple")];
     public IAsyncEnumerable<StreamingChatCompletionUpdate> StreamResponseAsync(string message)
     {
         Conversation.Add(new(ChatRole.User, message));
@@ -11,6 +11,6 @@ public class AiEngine(IChatClient ChatClient)
     public async ValueTask<string?> GetResponseAsync(string message)
     {
         Conversation.Add(new(ChatRole.User, message));
-        return (await ChatClient.CompleteAsync(Conversation)).Message.Text;
+        return (await ChatClient.CompleteAsync(Conversation)).Message.Text?.Trim();
     }
 }
