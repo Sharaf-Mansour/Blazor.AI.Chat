@@ -5,6 +5,9 @@ html, body {
 a, .btn-link {
     color: #006bb7;
 }
+* {
+    scroll-behavior: smooth;
+}
 
 .btn-primary {
     color: #fff;
