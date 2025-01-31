@@ -17,5 +17,12 @@
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
 </body>
-
+<script>
+    window.scrollToEnd = (id) => {
+        let item = document.getElementById(id);
+        if (item) {
+            item.scrollTo(0, item.scrollHeight);
+        }
+    };
+    </script>
 </html>
